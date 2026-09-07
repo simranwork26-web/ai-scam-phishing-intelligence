@@ -1,0 +1,108 @@
+AI Scam & Phishing Intelligence Assistant
+Model Evaluation Summary
+========================================
+
+DATASET
+-------
+Processed text dataset:
+- Total rows: 8660
+- Label 0: 6490
+- Label 1: 2170
+
+Held-out test set:
+- Total: 1299
+- Label 0: 973
+- Label 1: 326
+- Majority class: 0
+- Majority baseline accuracy: 0.7490
+
+RANDOM HELD-OUT TEST
+--------------------
+
+TF-IDF + Logistic Regression
+- Accuracy: 0.9838
+- Positive Precision: 0.9841
+- Positive Recall: 0.9509
+- Positive F1: 0.9672
+- ROC-AUC: 0.9974
+- Macro F1: 0.9783
+- Confusion Matrix: [[968, 5], [16, 310]]
+
+DistilBERT
+- Accuracy: 0.9854
+- Positive Precision: 0.9842
+- Positive Recall: 0.9571
+- Positive F1: 0.9705
+- ROC-AUC: 0.9992
+- Macro F1: 0.9804
+- Confusion Matrix: [[968, 5], [14, 312]]
+
+CROSS-SOURCE EVALUATION
+-----------------------
+
+TF-IDF + Logistic Regression
+Ling -> SpamAssasin
+- Accuracy: 0.6989
+- Positive Precision: 0.4946
+- Positive Recall: 0.8988
+- Positive F1: 0.6381
+- ROC-AUC: 0.8855
+
+SpamAssasin -> Ling
+- Accuracy: 0.9068
+- Positive Precision: 0.6408
+- Positive Recall: 0.9565
+- Positive F1: 0.7674
+- ROC-AUC: 0.9794
+
+DistilBERT
+Ling -> SpamAssasin
+- Accuracy: 0.4356
+- Positive Precision: 0.3384
+- Positive Recall: 0.9533
+- Positive F1: 0.4995
+- ROC-AUC: 0.8570
+- Confusion Matrix: [[134, 479], [12, 245]]
+
+SpamAssasin -> Ling
+- Accuracy: 0.9184
+- Positive Precision: 0.6700
+- Positive Recall: 0.9710
+- Positive F1: 0.7929
+- ROC-AUC: 0.9933
+- Confusion Matrix: [[327, 33], [2, 67]]
+
+EXTERNAL NAZARIO EVALUATION
+---------------------------
+
+Nazario:
+- Samples: 1565
+- All examples are positive/phishing
+- Correctly identified: 1266
+- Missed: 299
+- Phishing Recall: 0.8089
+
+ROC-AUC and specificity are not reported for Nazario because it contains only positive examples.
+
+INTERPRETATION
+--------------
+
+1. Both models perform very strongly on the random held-out test set.
+2. DistilBERT provides a modest improvement over TF-IDF on the random test set.
+3. Cross-source performance is substantially worse than random held-out performance.
+4. Ling -> SpamAssasin is particularly difficult for both models.
+5. DistilBERT Ling -> SpamAssasin accuracy (0.4356) is below the majority-class baseline (0.7490), despite high positive recall (0.9533).
+6. This indicates substantial source/distribution shift and demonstrates why random train/test evaluation alone is insufficient.
+7. SpamAssasin -> Ling generalizes considerably better, with DistilBERT reaching 0.9184 accuracy and 0.7929 positive F1.
+8. Feature analysis suggests corpus-specific vocabulary contributes to the observed generalization problem.
+9. External Nazario evaluation gives the TF-IDF baseline a phishing recall of 0.8089.
+10. The next evaluation step should compare DistilBERT against Nazario before moving to manipulation-signal engineering and robustness experiments.
+
+LIMITATIONS
+-----------
+
+- The main supervised training task is broader malicious/spam email classification, not a pure phishing-only label.
+- Ling and SpamAssasin have different corpus characteristics.
+- Nazario contains only positive/phishing examples.
+- Random held-out performance may be optimistic relative to real-world distribution shift.
+- Cross-source results demonstrate meaningful generalization limitations.

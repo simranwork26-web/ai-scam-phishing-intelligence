@@ -1,0 +1,4 @@
+Cross-source evaluation
+Ling -> SpamAssasin: Accuracy=0.6989, Class1 Recall=0.8988, Class1 F1=0.6381, ROC-AUC=0.8855
+SpamAssasin -> Ling: Accuracy=0.9068, Class1 Recall=0.9565, Class1 F1=0.7674, ROC-AUC=0.9794
+Random mixed split: Accuracy=0.9838, Class1 Recall=0.9509, Class1 F1=0.9672, ROC-AUC=0.9974

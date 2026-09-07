@@ -1,0 +1,27 @@
+
+.env
+
+# Local robustness-generation artifacts
+results/fusion/robustness_generated/
+results/fusion/robustness_raw/
+
+# Python virtual environments
+.venv/
+.venv-transformer/
+
+# Python cache files
+__pycache__/
+*.py[cod]
+
+# Local backup files
+*.bak
+*.pre_413_fix
+
+# Large datasets and trained model artifacts
+results/models/
+data/raw/
+data/processed/
+
+# Row-level experimental outputs
+results/**/*.csv
+results/**/*.jsonl

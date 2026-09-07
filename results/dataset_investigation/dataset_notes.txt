@@ -1,0 +1,118 @@
+AI Scam & Phishing Intelligence Assistant
+Dataset Investigation Notes
+==========================================
+
+TEXT DATASET SOURCE
+-------------------
+Zenodo record: 8339691
+Title: Phishing Email Curated Datasets
+DOI: 10.5281/zenodo.8339691
+License: CC BY 4.0
+Published: 2023-09-13
+Curated collection contains 11 email datasets spanning 1995-2022.
+
+SELECTED TEXT DATASETS
+----------------------
+
+1. Ling.csv
+   Rows: 2,859
+   Columns: subject, body, label
+   Labels:
+     0 = legitimate/benign
+     1 = spam/malicious
+   Missing values:
+     subject = 62
+     body = 0
+     label = 0
+   Exact duplicate text rows: 0
+   Normalized duplicate rows: 1
+   Normalized duplicate pair has consistent label 0
+   MD5: eac6399dc0c7ae455aebb64423dadc8b
+
+2. SpamAssasin.csv
+   Rows: 5,809
+   Columns: sender, receiver, date, subject, body, label, urls
+   Labels:
+     0 = legitimate/benign
+     1 = spam/malicious
+   Missing values:
+     subject = 16
+     body = 1
+     label = 0
+   Exact duplicate text rows: 0
+   Normalized duplicate rows: 14
+   Normalized duplicate groups: 7
+   Duplicate groups have consistent labels
+   MD5: d921e0b2333bfaa058bd38193e6b3fbd
+
+   Note:
+   The 'urls' field is binary in this dataset:
+     1 = 5002 rows
+     0 = 807 rows
+   It does not contain raw URL strings and will not be used
+   as the project's raw URL analysis input.
+
+3. Nazario.csv
+   Rows: 1,565
+   Columns: sender, receiver, date, subject, body, urls, label
+   Labels:
+     1 = 1,565 rows
+   This is a phishing-focused, phishing-only corpus.
+   It will NOT be used for main classifier training.
+   Intended role: external phishing-focused evaluation.
+   MD5: 4022d055bb7cf8602f30f768f652e91e
+
+COMBINED TRAINING CORPUS
+------------------------
+Ling + SpamAssasin:
+  Total rows before deduplication: 8,668
+  Label 0: 6,492
+  Label 1: 2,176
+  Label 1 proportion: 25.1%
+
+Duplicate findings:
+  Ling: 1 normalized duplicate pair
+  SpamAssasin: 7 normalized duplicate groups / 14 rows
+  Cross-dataset normalized text overlap: 0
+
+Planned preprocessing:
+  Deduplicate before train/validation/test splitting.
+  Preserve a source column identifying Ling vs SpamAssasin.
+  Text input will be subject + body.
+  Sender, receiver, and date will not be used as text-model features.
+  Dataset-specific URL indicators will not be used as raw URL inputs.
+
+PLANNED DATASET ROLES
+---------------------
+Training/development:
+  Ling + SpamAssasin
+
+External evaluation:
+  Nazario
+
+URL analysis:
+  Separate dataset with actual raw URLs, to be investigated independently.
+
+IMPORTANT LIMITATIONS
+---------------------
+The main training corpora are broader spam/malicious-email datasets,
+not purely phishing datasets. Therefore the primary supervised task
+must be described precisely as malicious/spam email classification,
+with phishing-focused external evaluation on Nazario.
+
+No claim of general phishing detection performance should be made
+without additional phishing-focused evaluation.
+
+All dataset transformations and split decisions must be documented
+to reduce leakage and support reproducibility.
+
+POST-DEDUPLICATION VERIFIED COUNTS
+----------------------------------
+Using normalized subject+body text:
+  Total rows after deduplication: 8,660
+  Label 0: 6,490
+  Label 1: 2,170
+
+Note: An earlier rough calculation estimated 8,661 rows.
+The direct computation produced 8,660, which is the authoritative
+post-deduplication count and should be used going forward.
