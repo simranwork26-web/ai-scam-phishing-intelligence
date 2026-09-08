@@ -131,7 +131,7 @@ A fixed sample of 100 malicious messages is transformed in three ways:
 2. Cue-reduced rewrite: reduce obvious scam-style linguistic cues such as exaggerated urgency, awkward phrasing, excessive punctuation, or overt threats while preserving the underlying objective and requested action.
 3. Combined rewrite: apply both transformations.
 
-This produces a target of 300 transformation cases.
+This produces 300 transformation attempts. Of these, 281 passed generation validation, 226 passed cosine-similarity screening, and 60 candidates were selected for manual semantic audit. One audited case was not assessable because the underlying message was materially corrupted, leaving 59 semantically verified transformation instances for the primary robustness analysis.
 
 ### Robustness Pipeline
 
@@ -159,19 +159,35 @@ Before/after comparison
 
 Cosine similarity is used only as a screening signal, not as proof of semantic equivalence. The preregistered screening threshold is 0.85.
 
-Transformations that fail the automatic screening are not rescued by lowering the threshold. The final robustness statistics will be reported only after the transformation batch and semantic audit are complete.
+Transformations that fail the automatic screening are not rescued by lowering the threshold.
+
+### Robustness Results
+
+On the 59 semantically verified transformations, all 59 original malicious messages were classified as positive at the 0.50 threshold. After rewriting, 51/59 remained positive, producing 8/59 (13.56%) classification flips.
+
+| Transformation | n | Mean Δ score | Mean absolute Δ | Wilcoxon p |
+|---|---:|---:|---:|---:|
+| Professional | 20 | -0.0656 | 0.1076 | 0.0136 |
+| Cue-reduced | 20 | -0.0592 | 0.0729 | 0.0136 |
+| Combined | 19 | -0.1579 | 0.1769 | 0.0053 |
+| Overall | 59 | -0.0932 | 0.1182 | 0.000021 |
+
+The 8 threshold-crossing flips came from 4 underlying base messages, so they are not 8 independent message-level failures. The combined transformation produced the largest mean confidence reduction.
+
+At higher thresholds, the number of positive detections lost after rewriting was 6 at 0.75, 6 at 0.90, and 4 at 0.99, compared with 8 at the 0.50 threshold.
+
+These results indicate statistically significant sensitivity to semantically preserved linguistic rewriting. This is a controlled robustness challenge-set evaluation, not a real-world prevalence estimate.
+
 
 ## Auxiliary Risk Indicators
 
-The system also extracts transparent rule-based context signals from messages, including:
+The system also extracts transparent rule-based auxiliary context signals from messages, currently including:
 
 - urgency or deadline language
 - financial or payment requests
 - authority or impersonation cues
-- credential-related requests
-- threat or fear language
 
-These indicators provide supporting context for the final explanation. They are not treated as a replacement for the primary text classifier.
+These signals provide supporting context for the final explanation. They are not treated as a replacement for the primary text classifier or as model explainability.
 
 ## Error Analysis
 
