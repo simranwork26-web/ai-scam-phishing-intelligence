@@ -4,7 +4,7 @@ import torch
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 ROOT = Path(__file__).resolve().parents[3]
-MODEL_PATH = ROOT / "results/models/distilbert"
+MODEL_PATH = ROOT / "results/models/distilbert_short_benign"
 MAX_LENGTH = 256
 
 

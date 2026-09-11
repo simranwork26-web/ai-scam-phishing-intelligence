@@ -51,7 +51,7 @@ def analyze(request: AnalyzeRequest):
     return AnalyzeResponse(
         risk_score=risk_score,
         risk_level=risk_level,
-        model="distilbert",
+        model="distilbert_short_benign",
         device=str(model.device),
         signals=indicators["individual_signals"],
         combinations=indicators["combinations"],
