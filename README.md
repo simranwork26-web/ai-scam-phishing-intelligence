@@ -32,8 +32,8 @@ Message + Optional URL
   - urgency                - URL structure
   - financial requests     - suspicious characters
   - authority cues         - subdomains
-  - credential cues       - encoded characters
-  - threat cues            - IP/port indicators
+                         - encoded characters
+                         - IP/port indicators
           |                    |
           +---------+----------+
                     |
@@ -64,8 +64,25 @@ The URL layer uses reproducible lexical features such as URL length, domain leng
 | Majority baseline | 74.90% | — | — | — | — |
 | TF-IDF + Logistic Regression | 98.38% | 98.41% | 95.09% | 96.72% | 99.74% |
 | DistilBERT | **98.54%** | **98.42%** | **95.71%** | **97.05%** | **99.92%** |
+| DistilBERT + 1,500 benign augmentation | 98.92% | 97.27% | **98.47%** | **97.87%** | 99.91% |
+| DistilBERT + benign + targeted malicious augmentation | 98.77% | 97.84% | 97.24% | 97.54% | 99.77% |
+| DistilBERT + benign + targeted malicious + short-benign augmentation | 98.54% | 98.42% | 95.71% | 97.05% | 99.86% |
 
 These are in-domain held-out results and are not presented as estimates of real-world phishing detection performance.
+
+### OOD v2 Challenge Set
+
+A frozen 240-message challenge set was constructed to test domain and register shift across benign and malicious business/personal messages in casual and formal registers. The threshold was fixed at 0.50 for the reported model evaluations.
+
+| Model | Accuracy | Precision | Malicious Recall | F1 | ROC-AUC | Benign FP | Malicious FN |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Original DistilBERT | 62.08% | 57.14% | **96.67%** | 71.83% | 90.02% | 87/120 | 4/120 |
+| + benign augmentation | 68.75% | **97.87%** | 38.33% | 55.09% | 88.54% | 1/120 | 74/120 |
+| 50/50 score fusion | 80.42% | 93.98% | 65.00% | 76.85% | 90.43% | 5/120 | 42/120 |
+| + targeted malicious augmentation | 82.92% | 76.87% | **94.17%** | 84.64% | 94.48% | 34/120 | 7/120 |
+| **+ short-benign augmentation (Model D)** | **94.17%** | **100.00%** | 88.33% | **93.81%** | **99.65%** | **0/120** | 14/120 |
+
+Model D was selected as the current final text model because it substantially reduced benign false positives while retaining high malicious recall on the frozen challenge set. The remaining 14 malicious false negatives are retained as a documented failure-analysis set rather than used for further tuning.
 
 ### Cross-Source Text Evaluation
 
