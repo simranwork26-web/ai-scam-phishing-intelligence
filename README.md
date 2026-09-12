@@ -2,7 +2,7 @@
 
 An AI-assisted defensive system for detecting phishing and scam messages, analyzing suspicious URLs, and explaining the main risk indicators behind a prediction.
 
-> Project status: Core text/URL modeling and evaluation are established; the controlled robustness study, final benchmark package, frontend, and technical report are in progress.
+> Project status: Core text/URL modeling, OOD evaluation, robustness analysis, URL intelligence, FastAPI backend, and Next.js frontend are established. Final documentation, reproducibility packaging, and technical report preparation remain.
 
 ## Overview
 
@@ -70,9 +70,11 @@ The URL layer uses reproducible lexical features such as URL length, domain leng
 
 These are in-domain held-out results and are not presented as estimates of real-world phishing detection performance.
 
-### OOD v2 Challenge Set
+### OOD v2 Development Challenge Set
 
-A frozen 240-message challenge set was constructed to test domain and register shift across benign and malicious business/personal messages in casual and formal registers. The threshold was fixed at 0.50 for the reported model evaluations.
+A 240-message development challenge set was constructed to test domain and register shift across benign and malicious business/personal messages in casual and formal registers. The threshold was fixed at 0.50 for the reported model evaluations.
+
+Because OOD v2 was used to diagnose failure modes and guide the successive augmentation experiments, its Model D result is treated as development-set performance rather than an unbiased generalization estimate. A fresh OOD v3 holdout is used for the post-development generalization claim.
 
 | Model | Accuracy | Precision | Malicious Recall | F1 | ROC-AUC | Benign FP | Malicious FN |
 |---|---:|---:|---:|---:|---:|---:|---:|
@@ -83,6 +85,17 @@ A frozen 240-message challenge set was constructed to test domain and register s
 | **+ short-benign augmentation (Model D)** | **94.17%** | **100.00%** | 88.33% | **93.81%** | **99.65%** | **0/120** | 14/120 |
 
 Model D was selected as the current final text model because it substantially reduced benign false positives while retaining high malicious recall on the frozen challenge set. The remaining 14 malicious false negatives are retained as a documented failure-analysis set rather than used for further tuning.
+
+### OOD v3 Fresh Post-Development Holdout
+
+OOD v3 is a fresh 400-message external holdout constructed after Model D development. It contains 200 ham and 200 spam messages from UCI SMS data, excluding messages reused during Model D benign augmentation. The dataset was frozen before evaluation and was not used for further model tuning.
+
+| Model | Accuracy | Precision | Recall | F1 | ROC-AUC | False Positive | False Negative |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Original DistilBERT | 68.75% | 63.16% | 90.00% | 74.23% | 86.66% | 105/200 | 20/200 |
+| **Model D** | **87.00%** | **100.00%** | 74.00% | **85.06%** | **98.05%** | **0/200** | 52/200 |
+
+Model D changed 139 of 400 predictions relative to the original checkpoint. On this fresh holdout, it eliminated benign false positives but traded away malicious recall. OOD v3 is treated as the primary post-development generalization estimate; OOD v2 is retained as a development-set diagnostic result.
 
 ### Cross-Source Text Evaluation
 
@@ -123,6 +136,21 @@ PhiUSIIL is used as the primary URL benchmark with a controlled URL-only feature
 | ROC-AUC | 99.86% |
 
 These results are dataset-specific benchmark results and should not be interpreted as production-level phishing detection performance.
+
+### Live URL Deployment Verification
+
+A separate balanced 100-URL sample (50 good, 50 bad; random_state=42) was passed through the same feature extraction, scaler, and logistic-regression artifacts used by the deployed URL scorer.
+
+| Metric | Live 100-URL Result |
+|---|---:|
+| Accuracy | 72.00% |
+| Precision | 76.19% |
+| Recall | 64.00% |
+| F1 | 69.57% |
+| False positives | 10/50 good |
+| False negatives | 18/50 bad |
+
+The live scorer and offline raw-URL scorer produced numerically identical probabilities on all 100 URLs (maximum absolute difference approximately 1.11e-16). This verifies that the deployed URL inference path matches the offline implementation. Because this is a small balanced deployment check, it is reported separately from the full 41,904-row domain-aware benchmark.
 
 ## Why the Evaluation Goes Beyond Accuracy
 
@@ -174,7 +202,7 @@ Model evaluation
 Before/after comparison
 ```
 
-Cosine similarity is used only as a screening signal, not as proof of semantic equivalence. The preregistered screening threshold is 0.85.
+Cosine similarity is used only as a screening signal, not as proof of semantic equivalence. The predefined screening threshold is 0.85.
 
 Transformations that fail the automatic screening are not rescued by lowering the threshold.
 
@@ -190,6 +218,8 @@ On the 59 semantically verified transformations, all 59 original malicious messa
 | Overall | 59 | -0.0932 | 0.1182 | 0.000021 |
 
 The 8 threshold-crossing flips came from 4 underlying base messages, so they are not 8 independent message-level failures. The combined transformation produced the largest mean confidence reduction.
+
+All 8 threshold-crossing changes were in the same direction (malicious → benign). An exact two-sided McNemar test on the paired classifications gave p = 0.0078125, indicating a statistically significant change in binary predictions. The 8 flips came from 4 underlying base messages, so the transformations are not independent message-level observations.
 
 At higher thresholds, the number of positive detections lost after rewriting was 6 at 0.75, 6 at 0.90, and 4 at 0.99, compared with 8 at the 0.50 threshold.
 
