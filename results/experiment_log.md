@@ -2,8 +2,8 @@
 ## AI Scam & Phishing Intelligence Assistant
 
 This file records established experimental decisions and quantitative results.
-Major methodology decisions are treated as pre-registered unless explicitly
-marked as exploratory.
+Major methodology decisions are documented in this log. Exploratory decisions
+are explicitly marked where applicable.
 
 ---
 
@@ -681,7 +681,7 @@ Other intermediate bands had no reported observations.
 Conclusion:
 - DistilBERT outputs are highly bimodal.
 - Do not invent arbitrary smooth Low/Medium/High probability thresholds.
-- Derive empirical risk bands before the final Streamlit app, or transparently document the bimodality.
+- Derive empirical risk bands before the final web application, or transparently document the bimodality.
 
 ---
 
@@ -1002,7 +1002,7 @@ If fewer than 60 survive:
 Primary paired comparison:
 - Original vs transformed predictions.
 
-McNemar decision is pre-registered:
+McNemar decision rule is documented:
 - Discordant pairs >=20 -> standard chi-square McNemar
 - Discordant pairs <20 -> exact McNemar
 
@@ -1045,7 +1045,7 @@ official reproducibility result.
 
 ## 28. PhiUSIIL Dataset Comparison Gate
 
-The PhiUSIIL comparison remains part of the pre-registered plan.
+The PhiUSIIL comparison remains part of the documented evaluation plan.
 
 Current URL benchmark:
 - domain-aware test F1 = 0.4520
@@ -1124,7 +1124,7 @@ Required next stages:
 9. Evaluate original vs transformed predictions.
 10. Calculate recall/F1 degradation and paired McNemar tests.
 11. Finalize empirical risk bands.
-12. Build Streamlit application.
+12. Build Next.js web application.
 13. Complete architecture diagram.
 14. Finalize README with methodology, evaluation, robustness, limitations,
     ethics, and reproducibility.
@@ -1137,7 +1137,7 @@ Required next stages:
 - One terminal command at a time.
 - Inspect output before giving the next command.
 - Do not restart completed work.
-- Do not silently alter pre-registered thresholds or sampling rules.
+- Do not silently alter documented thresholds or sampling rules.
 - Do not invent metrics.
 - Do not force fusion when experiments do not support it.
 - Do not claim rule-based signals are model explanations.
@@ -1210,12 +1210,12 @@ Qualitative checklist completed before benchmark results:
    - Some PhiUSIIL features depend on webpage/source-code information and
      therefore cannot be reconstructed from a URL string alone.
 
-Pre-registered quantitative comparison gate:
+Documented quantitative comparison gate:
 - Current domain-aware URL test F1: 0.4520
 - Required improvement: +0.05
 - PhiUSIIL switch threshold: F1 >= 0.5020
 
-Pre-registered decision:
+Documented decision rule:
 - Switch to PhiUSIIL only if the controlled domain-aware comparison reaches
   test F1 >= 0.5020.
 - No qualitative override after observing performance.
@@ -1235,7 +1235,7 @@ Execution independence:
 - It is not a prerequisite for continuing the text robustness-generation
   branch.
 - The final URL dataset choice must nevertheless be documented using the
-  pre-registered quantitative gate before the final project methodology is
+  documented quantitative gate before the final project methodology is
   frozen.
 
 ## 32. PhiUSIIL Leakage / Shortcut Audit and Final URL Dataset Decision
@@ -1256,7 +1256,7 @@ Execution independence:
 - Structural placeholder reproducibility: PASS.
 - This non-determinism is accepted as an LLM-generation characteristic; identical paraphrases are not required for the robustness experiment.
 - Added local semantic screening using sentence-transformers `all-MiniLM-L6-v2` with normalized 384-dimensional embeddings.
-- Cosine similarity threshold remains pre-registered at >=0.85.
+- Cosine similarity threshold was set at >=0.85 for screening.
 - The threshold is used only as a screening signal, not as proof of semantic preservation.
 - Final screening pipeline: Groq generation -> placeholder validation -> cosine similarity screening -> structured semantic rubric -> manual audit.
 - Structured rubric fields: objective retained, requested action retained, entities/claims retained, financial intent retained, credential intent retained, authority/impersonation retained, important behavior retained, new behavior introduced.
@@ -1283,7 +1283,7 @@ At the first quota interruption:
 - 49 generations passed mechanical generation validation.
 - 2 generations were discarded.
 - Of the 49 mechanically valid generations, 38 passed cosine screening
-  (>=0.85) and 11 were rejected by the preregistered similarity threshold.
+  (>=0.85) and 11 were rejected by the predefined similarity threshold.
 
 Cosine distribution among the 49 mechanically valid generations:
 - minimum: 0.2995
@@ -1303,3 +1303,15 @@ existing sample/transformation pairs on subsequent runs.
 
 The 0.85 cosine threshold was not changed in response to the observed
 rejection rate.
+
+## 35. Robustness Final Statistical Analysis
+- Primary inference is performed at the base-message level because multiple verified transformations can originate from the same underlying message.
+- Unique base messages: 42.
+- Base messages with at least one malicious-to-benign threshold flip at the predefined 0.50 threshold: 4/42 (9.52%).
+- 95% bootstrap CI for base-message flip rate: 2.38%–19.05% (10,000 resamples, random seed 42).
+- Original mean malicious probability across base messages: 0.98328.
+- Mean transformed malicious probability, using the mean score across each base message's available verified transformations: 0.92947.
+- Mean paired score change: -0.05381.
+- 95% bootstrap CI for mean paired score change: -0.12047 to -0.00185 (10,000 resamples, random seed 42).
+- One-sided Wilcoxon signed-rank test on the 42 base-level paired scores: W=766, p=1.68e-05.
+- The 59 verified transformation instances remain a secondary descriptive analysis and are not treated as 59 independent base-message observations.

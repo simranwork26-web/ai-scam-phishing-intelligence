@@ -93,6 +93,40 @@ export default function AnalysisPanel({ onAnalysis }: AnalysisPanelProps) {
           <p className="mt-3 text-xs text-zinc-600">
             Model: {result.model} · Device: {result.device}
           </p>
+
+          <div className="mt-5 border-t border-white/5 pt-5">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-medium uppercase tracking-[0.2em] text-zinc-500">
+                URL Analysis
+              </p>
+              <p className="text-xs uppercase tracking-[0.15em] text-zinc-400">
+                {result.url_risk_level} risk
+              </p>
+            </div>
+
+            <div className="mt-3 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3">
+                <p className="text-xs text-zinc-600">URLs detected</p>
+                <p className="mt-1 text-lg font-semibold text-white">
+                  {result.url_count}
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3">
+                <p className="text-xs text-zinc-600">Max URL risk</p>
+                <p className="mt-1 text-lg font-semibold text-white">
+                  {(result.url_max_probability * 100).toFixed(1)}%
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3">
+                <p className="text-xs text-zinc-600">Mean URL risk</p>
+                <p className="mt-1 text-lg font-semibold text-white">
+                  {(result.url_mean_probability * 100).toFixed(1)}%
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

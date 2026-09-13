@@ -5,6 +5,11 @@ export type AnalyzeResult = {
   device: string;
   signals: string[];
   combinations: string[];
+  url_count: number;
+  url_max_probability: number;
+  url_mean_probability: number;
+  url_risk_level: string;
+
 };
 
 const API_BASE_URL =

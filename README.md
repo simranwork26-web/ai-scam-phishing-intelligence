@@ -59,14 +59,14 @@ The URL layer uses reproducible lexical features such as URL length, domain leng
 
 ### Text Classification: Held-Out Test Set
 
-| Model | Accuracy | Precision | Recall | F1 | ROC-AUC |
-|---|---:|---:|---:|---:|---:|
-| Majority baseline | 74.90% | — | — | — | — |
-| TF-IDF + Logistic Regression | 98.38% | 98.41% | 95.09% | 96.72% | 99.74% |
-| DistilBERT | **98.54%** | **98.42%** | **95.71%** | **97.05%** | **99.92%** |
-| DistilBERT + 1,500 benign augmentation | 98.92% | 97.27% | **98.47%** | **97.87%** | 99.91% |
-| DistilBERT + benign + targeted malicious augmentation | 98.77% | 97.84% | 97.24% | 97.54% | 99.77% |
-| DistilBERT + benign + targeted malicious + short-benign augmentation | 98.54% | 98.42% | 95.71% | 97.05% | 99.86% |
+| Model                                                                |   Accuracy |  Precision |     Recall |         F1 |    ROC-AUC |
+| -------------------------------------------------------------------- | ---------: | ---------: | ---------: | ---------: | ---------: |
+| Majority baseline                                                    |     74.90% |          — |          — |          — |          — |
+| TF-IDF + Logistic Regression                                         |     98.38% |     98.41% |     95.09% |     96.72% |     99.74% |
+| DistilBERT                                                           | **98.54%** | **98.42%** | **95.71%** | **97.05%** | **99.92%** |
+| DistilBERT + 1,500 benign augmentation                               |     98.92% |     97.27% | **98.47%** | **97.87%** |     99.91% |
+| DistilBERT + benign + targeted malicious augmentation                |     98.77% |     97.84% |     97.24% |     97.54% |     99.77% |
+| DistilBERT + benign + targeted malicious + short-benign augmentation |     98.54% |     98.42% |     95.71% |     97.05% |     99.86% |
 
 These are in-domain held-out results and are not presented as estimates of real-world phishing detection performance.
 
@@ -76,13 +76,13 @@ A 240-message development challenge set was constructed to test domain and regis
 
 Because OOD v2 was used to diagnose failure modes and guide the successive augmentation experiments, its Model D result is treated as development-set performance rather than an unbiased generalization estimate. A fresh OOD v3 holdout is used for the post-development generalization claim.
 
-| Model | Accuracy | Precision | Malicious Recall | F1 | ROC-AUC | Benign FP | Malicious FN |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| Original DistilBERT | 62.08% | 57.14% | **96.67%** | 71.83% | 90.02% | 87/120 | 4/120 |
-| + benign augmentation | 68.75% | **97.87%** | 38.33% | 55.09% | 88.54% | 1/120 | 74/120 |
-| 50/50 score fusion | 80.42% | 93.98% | 65.00% | 76.85% | 90.43% | 5/120 | 42/120 |
-| + targeted malicious augmentation | 82.92% | 76.87% | **94.17%** | 84.64% | 94.48% | 34/120 | 7/120 |
-| **+ short-benign augmentation (Model D)** | **94.17%** | **100.00%** | 88.33% | **93.81%** | **99.65%** | **0/120** | 14/120 |
+| Model                                     |   Accuracy |   Precision | Malicious Recall |         F1 |    ROC-AUC | Benign FP | Malicious FN |
+| ----------------------------------------- | ---------: | ----------: | ---------------: | ---------: | ---------: | --------: | -----------: |
+| Original DistilBERT                       |     62.08% |      57.14% |       **96.67%** |     71.83% |     90.02% |    87/120 |        4/120 |
+| + benign augmentation                     |     68.75% |  **97.87%** |           38.33% |     55.09% |     88.54% |     1/120 |       74/120 |
+| 50/50 score fusion                        |     80.42% |      93.98% |           65.00% |     76.85% |     90.43% |     5/120 |       42/120 |
+| + targeted malicious augmentation         |     82.92% |      76.87% |       **94.17%** |     84.64% |     94.48% |    34/120 |        7/120 |
+| **+ short-benign augmentation (Model D)** | **94.17%** | **100.00%** |           88.33% | **93.81%** | **99.65%** | **0/120** |       14/120 |
 
 Model D was selected as the current final text model because it substantially reduced benign false positives while retaining high malicious recall on the frozen challenge set. The remaining 14 malicious false negatives are retained as a documented failure-analysis set rather than used for further tuning.
 
@@ -90,19 +90,23 @@ Model D was selected as the current final text model because it substantially re
 
 OOD v3 is a fresh 400-message external holdout constructed after Model D development. It contains 200 ham and 200 spam messages from UCI SMS data, excluding messages reused during Model D benign augmentation. The dataset was frozen before evaluation and was not used for further model tuning.
 
-| Model | Accuracy | Precision | Recall | F1 | ROC-AUC | False Positive | False Negative |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| Original DistilBERT | 68.75% | 63.16% | 90.00% | 74.23% | 86.66% | 105/200 | 20/200 |
-| **Model D** | **87.00%** | **100.00%** | 74.00% | **85.06%** | **98.05%** | **0/200** | 52/200 |
+| Model               |   Accuracy |   Precision | Recall |         F1 |    ROC-AUC | False Positive | False Negative |
+| ------------------- | ---------: | ----------: | -----: | ---------: | ---------: | -------------: | -------------: |
+| Original DistilBERT |     68.75% |      63.16% | 90.00% |     74.23% |     86.66% |        105/200 |         20/200 |
+| **Model D**         | **87.00%** | **100.00%** | 74.00% | **85.06%** | **98.05%** |      **0/200** |         52/200 |
 
-Model D changed 139 of 400 predictions relative to the original checkpoint. On this fresh holdout, it eliminated benign false positives but traded away malicious recall. OOD v3 is treated as the primary post-development generalization estimate; OOD v2 is retained as a development-set diagnostic result.
+Model D changed 139 of 400 predictions relative to the original checkpoint. On this fresh holdout, it eliminated benign false positives but traded away malicious recall. OOD v3 is an external SMS-spam generalization test rather than a direct modern-phishing benchmark. OOD v2 is retained as a development-set diagnostic result.
+
+Additional OOD v3 analysis: PR-AUC = 98.65%, Brier score = 0.12385, and ECE = 0.12860. These results indicate strong ranking performance but poorly calibrated probabilities under this distribution. Calibration was not fit on OOD v3 because it remains the post-development external holdout.
+
+The 52 false negatives are dominated by SMS-spam categories outside the project's core phishing/security threat model. Two security-adjacent cases were individually inspected: one was too sparse to establish malicious intent, while another contained login and URL-related cues but received only 15.2% malicious probability. These cases are qualitative failure analysis, not a phishing-recall estimate.
 
 ### Cross-Source Text Evaluation
 
-| Train Source | Evaluation Source | Model | Accuracy | F1 | ROC-AUC |
-|---|---|---|---:|---:|---:|
-| Ling | SpamAssassin | DistilBERT | 43.56% | 49.95% | 85.70% |
-| SpamAssassin | Ling | DistilBERT | 91.84% | 79.29% | 99.33% |
+| Train Source | Evaluation Source | Model      | Accuracy |     F1 | ROC-AUC |
+| ------------ | ----------------- | ---------- | -------: | -----: | ------: |
+| Ling         | SpamAssassin      | DistilBERT |   43.56% | 49.95% |  85.70% |
+| SpamAssassin | Ling              | DistilBERT |   91.84% | 79.29% |  99.33% |
 
 The cross-source results show that strong in-domain performance does not guarantee generalization across corpora.
 
@@ -110,10 +114,10 @@ The cross-source results show that strong in-domain performance does not guarant
 
 Nazario is used as an external phishing-positive-only evaluation set.
 
-| Model | Phishing Recall |
-|---|---:|
-| TF-IDF + Logistic Regression | 80.89% |
-| DistilBERT | **83.83%** |
+| Model                        | Phishing Recall |
+| ---------------------------- | --------------: |
+| TF-IDF + Logistic Regression |          80.89% |
+| DistilBERT                   |      **83.83%** |
 
 Because the external set is positive-only, ROC-AUC is not reported for this evaluation.
 
@@ -121,34 +125,35 @@ Because the external set is positive-only, ROC-AUC is not reported for this eval
 
 Two complementary URL resources are used.
 
-The original malicious-URL dataset is retained as a secondary reference for studying harder generalization conditions and domain leakage.
+Two complementary URL datasets are evaluated under domain-aware splitting. PhiUSIIL is the primary controlled benchmark, while the separate Faizann24 malicious-URL corpus is retained as a harder generalization reference.
 
-PhiUSIIL is used as the primary URL benchmark with a controlled URL-only feature subset and domain-aware train/validation/test splits.
+### Domain-Aware URL Benchmark Results
 
-### Domain-Aware PhiUSIIL Test Results
+| Metric / Dataset | PhiUSIIL | Faizann24 malicious URLs |
+| --- | ---: | ---: |
+| Role | Primary controlled benchmark | Secondary harder/generalization reference |
+| Full dataset | 235,795 | 420,464 raw / 406,954 clean |
+| Test size | 23,677 | 41,904 |
+| Accuracy | 99.63% | 78.42% |
+| Precision | 99.95% | 35.36% |
+| Recall | 99.20% | 62.64% |
+| F1 | **99.58%** | **45.20%** |
+| ROC-AUC | 99.86% | 83.74% |
 
-| Metric | Result |
-|---|---:|
-| Accuracy | 99.63% |
-| Precision | 99.95% |
-| Recall | 99.20% |
-| F1 | 99.58% |
-| ROC-AUC | 99.86% |
-
-These results are dataset-specific benchmark results and should not be interpreted as production-level phishing detection performance.
+The datasets are independently constructed and use separate domain-aware split branches. The performance gap is therefore a cross-dataset result, not an inconsistency in the evaluation pipeline. These are dataset-specific benchmark results and should not be interpreted as production-level phishing detection performance.
 
 ### Live URL Deployment Verification
 
 A separate balanced 100-URL sample (50 good, 50 bad; random_state=42) was passed through the same feature extraction, scaler, and logistic-regression artifacts used by the deployed URL scorer.
 
-| Metric | Live 100-URL Result |
-|---|---:|
-| Accuracy | 72.00% |
-| Precision | 76.19% |
-| Recall | 64.00% |
-| F1 | 69.57% |
-| False positives | 10/50 good |
-| False negatives | 18/50 bad |
+| Metric          | Live 100-URL Result |
+| --------------- | ------------------: |
+| Accuracy        |              72.00% |
+| Precision       |              76.19% |
+| Recall          |              64.00% |
+| F1              |              69.57% |
+| False positives |          10/50 good |
+| False negatives |           18/50 bad |
 
 The live scorer and offline raw-URL scorer produced numerically identical probabilities on all 100 URLs (maximum absolute difference approximately 1.11e-16). This verifies that the deployed URL inference path matches the offline implementation. Because this is a small balanced deployment check, it is reported separately from the full 41,904-row domain-aware benchmark.
 
@@ -176,7 +181,7 @@ A fixed sample of 100 malicious messages is transformed in three ways:
 2. Cue-reduced rewrite: reduce obvious scam-style linguistic cues such as exaggerated urgency, awkward phrasing, excessive punctuation, or overt threats while preserving the underlying objective and requested action.
 3. Combined rewrite: apply both transformations.
 
-This produces 300 transformation attempts. Of these, 281 passed generation validation, 226 passed cosine-similarity screening, and 60 candidates were selected for manual semantic audit. One audited case was not assessable because the underlying message was materially corrupted, leaving 59 semantically verified transformation instances for the primary robustness analysis.
+This produces 300 transformation attempts. Of these, 281 passed generation validation, 226 passed cosine-similarity screening, and 60 candidates were selected for manual semantic audit. One audited case was not assessable because the underlying message was materially corrupted, leaving 59 semantically verified transformation instances from 42 unique base messages.
 
 ### Robustness Pipeline
 
@@ -208,23 +213,22 @@ Transformations that fail the automatic screening are not rescued by lowering th
 
 ### Robustness Results
 
-On the 59 semantically verified transformations, all 59 original malicious messages were classified as positive at the 0.50 threshold. After rewriting, 51/59 remained positive, producing 8/59 (13.56%) classification flips.
+The primary robustness analysis is performed at the base-message level because multiple verified transformations can originate from the same underlying message. Across 42 unique base messages, 4 experienced at least one malicious-to-benign threshold crossing at the predefined 0.50 threshold: 4/42 = 9.52% (95% bootstrap CI: 2.38%–19.05%).
 
-| Transformation | n | Mean Δ score | Mean absolute Δ | Wilcoxon p |
-|---|---:|---:|---:|---:|
-| Professional | 20 | -0.0656 | 0.1076 | 0.0136 |
-| Cue-reduced | 20 | -0.0592 | 0.0729 | 0.0136 |
-| Combined | 19 | -0.1579 | 0.1769 | 0.0053 |
-| Overall | 59 | -0.0932 | 0.1182 | 0.000021 |
+For score shift, each base message is represented by the mean score across its available verified transformations. The original mean malicious probability was 0.9833 versus 0.9295 after rewriting, for a mean paired change of -0.05381 (95% bootstrap CI: -0.12047 to -0.00185). A one-sided Wilcoxon signed-rank test gave W = 766 and p = 1.68×10^-5.
 
-The 8 threshold-crossing flips came from 4 underlying base messages, so they are not 8 independent message-level failures. The combined transformation produced the largest mean confidence reduction.
+The 59 verified transformation instances remain useful as a secondary descriptive analysis:
 
-All 8 threshold-crossing changes were in the same direction (malicious → benign). An exact two-sided McNemar test on the paired classifications gave p = 0.0078125, indicating a statistically significant change in binary predictions. The 8 flips came from 4 underlying base messages, so the transformations are not independent message-level observations.
+| Transformation |   n | Mean Δ score | Mean absolute Δ | Wilcoxon p |
+| -------------- | --: | -----------: | --------------: | ---------: |
+| Professional   |  20 |      -0.0656 |          0.1076 |     0.0136 |
+| Cue-reduced    |  20 |      -0.0592 |          0.0729 |     0.0136 |
+| Combined       |  19 |      -0.1579 |          0.1769 |     0.0053 |
+| Overall        |  59 |      -0.0932 |          0.1182 |   0.000021 |
 
-At higher thresholds, the number of positive detections lost after rewriting was 6 at 0.75, 6 at 0.90, and 4 at 0.99, compared with 8 at the 0.50 threshold.
+All 8 transformation-level threshold-crossing changes were malicious → benign and came from 4 underlying base messages. The 59-instance analysis is therefore secondary and descriptive rather than an independent-message significance test. At higher thresholds, positive detections lost after rewriting were 6 at 0.75, 6 at 0.90, and 4 at 0.99, compared with 8 at the 0.50 threshold.
 
-These results indicate statistically significant sensitivity to semantically preserved linguistic rewriting. This is a controlled robustness challenge-set evaluation, not a real-world prevalence estimate.
-
+These results indicate sensitivity to semantically preserved linguistic rewriting. This is a controlled robustness challenge-set evaluation, not a real-world prevalence estimate.
 
 ## Auxiliary Risk Indicators
 
@@ -300,15 +304,14 @@ Current limitations include dataset-specific language and URL distributions, pos
 
 The system is intended as a defensive research and demonstration project, not as a guarantee that a message or URL is safe.
 
-## Planned Final Components
+## Remaining Finalization
 
-- Complete the robustness experiment and semantic audit
-- Produce final benchmark tables and plots
-- Build a custom Streamlit interface
+- Finalize benchmark tables and plots
 - Add architecture and methodology diagrams
 - Write the full technical report
 - Add tests and reproducibility instructions
-- Deploy a public demonstration
+- Complete the final reproducibility smoke test
+- Perform final GitHub/documentation cleanup
 
 ## License
 
