@@ -84,6 +84,9 @@ export default function ThreatProfile({
                   <span className="text-[11px] font-medium text-zinc-300">
                     {signal.label}
                   </span>
+                  <span className="mt-1 text-[9px] uppercase tracking-[0.12em] text-zinc-600">
+                    {enabled ? "Detected" : "Not detected"}
+                  </span>
                 </div>
               </div>
             );
