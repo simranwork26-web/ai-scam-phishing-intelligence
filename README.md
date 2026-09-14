@@ -1,274 +1,537 @@
-# AI Scam & Phishing Intelligence Assistant
+# SENTINEL — AI Scam & Phishing Intelligence
 
-An AI-assisted defensive system for detecting phishing and scam messages, analyzing suspicious URLs, and explaining the main risk indicators behind a prediction.
+SENTINEL is a defensive research and engineering prototype for analyzing suspicious messages and URLs. It combines a supervised DistilBERT text classifier, transparent social-engineering indicators, and a separate URL-risk model behind a FastAPI service with a Next.js frontend.
 
-> Project status: Core text/URL modeling, OOD evaluation, robustness analysis, URL intelligence, FastAPI backend, and Next.js frontend are established. Final documentation, reproducibility packaging, and technical report preparation remain.
+> **Research prototype · Defensive use**
+>
+> SENTINEL provides probabilistic risk analysis. A low-risk result is not proof that a message or URL is safe, and a high-risk result is not a substitute for human verification.
 
-## Overview
+## Final Results at a Glance
 
-Phishing and scam messages increasingly rely on social engineering rather than obviously malicious wording. This project investigates a layered approach for detecting suspicious messages, analyzing URLs, and providing interpretable supporting risk indicators.
+### Final text model — DistilBERT Model D
 
-### Research Questions
+| Evaluation | Accuracy | Precision | Recall | F1 | ROC-AUC |
+|---|---:|---:|---:|---:|---:|
+| **Held-out test set** | **98.54%** | **98.42%** | **95.71%** | **97.05%** | **99.86%** |
+| **OOD v3 fresh holdout** | **87.00%** | **100.00%** | **74.00%** | **85.06%** | **98.05%** |
 
-1. How well do classical and transformer-based models detect phishing/scam messages on held-out data?
-2. How well do those models generalize across different email corpora and external phishing data?
-3. How robust is detection when malicious messages are rewritten to sound more professional or less obviously suspicious while preserving their malicious intent?
+**OOD v3:** 200 benign + 200 spam messages, **0 false positives**, **52 false negatives**.
 
-## System Architecture
+**External phishing-positive evaluation:** DistilBERT phishing recall **83.83%** on Nazario.
+
+**Robustness:** 4 of 42 unique base messages experienced at least one malicious→benign threshold flip = **9.52%**, bootstrap 95% CI **2.38%–19.05%**.
+
+### URL model
+
+Primary PhiUSIIL domain-aware benchmark:
+
+**99.63% accuracy · 99.95% precision · 99.20% recall · 99.58% F1 · 99.86% ROC-AUC**
+
+A separate Faizann24-derived URL branch achieved **78.42% accuracy · 35.36% precision · 62.64% recall · 45.20% F1 · 83.74% ROC-AUC**. These are separate datasets and are not merged into one headline URL score.
+
+---
+
+## What SENTINEL Does
+
+Given a message, SENTINEL:
+
+1. estimates scam/phishing risk with the deployed DistilBERT classifier;
+2. extracts transparent auxiliary manipulation signals;
+3. extracts URLs from the message;
+4. evaluates each detected URL with a separate URL model;
+5. returns a combined evidence-oriented assessment to the frontend.
+
+Current auxiliary signals:
+
+- **Urgency** — pressure or deadline language.
+- **Financial** — payment or financial-action language.
+- **Authority** — organizational/security authority or impersonation cues.
+
+These indicators are transparent heuristics. They are **supporting evidence, not neural-model explanations**.
+
+## Architecture
 
 ```text
-Message + Optional URL
-          |
-          v
-   +----------------------+
-   | Text Analysis        |
-   | TF-IDF / DistilBERT  |
-   +----------------------+
-          |
-          +--------------------+
-          |                    |
-          v                    v
-  Manipulation Signals     URL Analysis
-  - urgency                - URL structure
-  - financial requests     - suspicious characters
-  - authority cues         - subdomains
-                         - encoded characters
-                         - IP/port indicators
-          |                    |
-          +---------+----------+
-                    |
-                    v
-          Risk / Evidence Layer
-                    |
-                    v
-             User Explanation
+                         ┌──────────────────────┐
+                         │   SENTINEL Frontend  │
+                         │ Next.js + TypeScript  │
+                         └──────────┬───────────┘
+                                    │ POST /analyze
+                                    ▼
+                         ┌──────────────────────┐
+                         │    FastAPI Backend   │
+                         └──────────┬───────────┘
+                                    │
+                     ┌──────────────┴──────────────┐
+                     ▼                             ▼
+            ┌─────────────────┐          ┌─────────────────┐
+            │  Text Pipeline  │          │   URL Pipeline  │
+            │ DistilBERT D    │          │ URL extraction  │
+            │ + rule signals  │          │ + URL classifier│
+            └────────┬────────┘          └────────┬────────┘
+                     │                            │
+                     └─────────────┬──────────────┘
+                                   ▼
+                         ┌──────────────────────┐
+                         │ Risk + Evidence Layer│
+                         └──────────┬───────────┘
+                                    ▼
+                         ┌──────────────────────┐
+                         │    SENTINEL UI       │
+                         │ score / risk / URL / │
+                         │ signals / evidence   │
+                         └──────────────────────┘
 ```
 
-## Models
+### Technology
 
-### Text Classification
+- **Frontend:** Next.js 16.3.4, React, TypeScript, Tailwind.
+- **Backend:** FastAPI + Uvicorn.
+- **ML runtime:** PyTorch 2.14.0.
+- **Development accelerator:** Apple MPS.
+- **Text model:** DistilBERT checkpoint `results/models/distilbert_short_benign`.
+- **URL model:** logistic-regression pipeline with stored preprocessing artifacts.
 
-- TF-IDF + Logistic Regression baseline
-- DistilBERT fine-tuned for binary text classification
+## Text Dataset Construction
 
-### URL Analysis
+The main text corpus combines three sources:
 
-The URL layer uses reproducible lexical features such as URL length, domain length, character composition, subdomain count, query characters, special-character ratios, HTTPS, and IP-host indicators. No live DNS requests, webpage downloads, or browser execution are required by the current URL analysis layer.
+| Source | Rows | Label 0 | Label 1 |
+|---|---:|---:|---:|
+| Nazario | 1,565 | 0 | 1,565 |
+| Ling | 2,859 | 2,401 | 458 |
+| SpamAssassin | 5,809 | 4,091 | 1,718 |
+| **Combined** | **8,668** | — | — |
 
-## Current Results
+After deduplication:
 
-### Text Classification: Held-Out Test Set
+- **8,660** normalized unique rows.
+- **0** normalized overlap across sources.
+- Source-aware split:
+  - train **6,062**
+  - validation **1,299**
+  - test **1,299**
+- Training distribution: **4,543 benign / 1,519 malicious**.
 
-| Model                                                                |   Accuracy |  Precision |     Recall |         F1 |    ROC-AUC |
-| -------------------------------------------------------------------- | ---------: | ---------: | ---------: | ---------: | ---------: |
-| Majority baseline                                                    |     74.90% |          — |          — |          — |          — |
-| TF-IDF + Logistic Regression                                         |     98.38% |     98.41% |     95.09% |     96.72% |     99.74% |
-| DistilBERT                                                           | **98.54%** | **98.42%** | **95.71%** | **97.05%** | **99.92%** |
-| DistilBERT + 1,500 benign augmentation                               |     98.92% |     97.27% | **98.47%** | **97.87%** |     99.91% |
-| DistilBERT + benign + targeted malicious augmentation                |     98.77% |     97.84% |     97.24% |     97.54% |     99.77% |
-| DistilBERT + benign + targeted malicious + short-benign augmentation |     98.54% |     98.42% |     95.71% |     97.05% |     99.86% |
+Dataset preparation includes missing-value checks, exact and normalized duplicate analysis, cross-source overlap checks, and source-aware splitting.
 
-These are in-domain held-out results and are not presented as estimates of real-world phishing detection performance.
+## Text Model Development
 
-### OOD v2 Development Challenge Set
+The final model was not selected from a single benchmark. The project compares a classical baseline and several DistilBERT variants:
 
-A 240-message development challenge set was constructed to test domain and register shift across benign and malicious business/personal messages in casual and formal registers. The threshold was fixed at 0.50 for the reported model evaluations.
+| Model | Accuracy | Precision | Recall | F1 | ROC-AUC |
+|---|---:|---:|---:|---:|---:|
+| Majority baseline | 74.90% | — | — | — | — |
+| TF-IDF + Logistic Regression | 98.38% | 98.41% | 95.09% | 96.72% | 99.74% |
+| **Original DistilBERT** | **98.54%** | **98.42%** | **95.71%** | **97.05%** | **99.92%** |
+| DistilBERT + 1,500 benign | 98.92% | 97.27% | 98.47% | 97.87% | 99.91% |
+| DistilBERT + benign + targeted malicious | 98.77% | 97.84% | 97.24% | 97.54% | 99.77% |
+| **Model D: + short-benign** | 98.54% | 98.42% | 95.71% | 97.05% | 99.86% |
 
-Because OOD v2 was used to diagnose failure modes and guide the successive augmentation experiments, its Model D result is treated as development-set performance rather than an unbiased generalization estimate. A fresh OOD v3 holdout is used for the post-development generalization claim.
+The **98.54% held-out accuracy** is the primary in-domain accuracy of the final deployed model. The **87.00% OOD v3 accuracy** is a separate post-development generalization result and should not replace or be conflated with the held-out score.
 
-| Model                                     |   Accuracy |   Precision | Malicious Recall |         F1 |    ROC-AUC | Benign FP | Malicious FN |
-| ----------------------------------------- | ---------: | ----------: | ---------------: | ---------: | ---------: | --------: | -----------: |
-| Original DistilBERT                       |     62.08% |      57.14% |       **96.67%** |     71.83% |     90.02% |    87/120 |        4/120 |
-| + benign augmentation                     |     68.75% |  **97.87%** |           38.33% |     55.09% |     88.54% |     1/120 |       74/120 |
-| 50/50 score fusion                        |     80.42% |      93.98% |           65.00% |     76.85% |     90.43% |     5/120 |       42/120 |
-| + targeted malicious augmentation         |     82.92% |      76.87% |       **94.17%** |     84.64% |     94.48% |    34/120 |        7/120 |
-| **+ short-benign augmentation (Model D)** | **94.17%** | **100.00%** |           88.33% | **93.81%** | **99.65%** | **0/120** |       14/120 |
+### Why Model D was selected
 
-Model D was selected as the current final text model because it substantially reduced benign false positives while retaining high malicious recall on the frozen challenge set. The remaining 14 malicious false negatives are retained as a documented failure-analysis set rather than used for further tuning.
+Model D added:
 
-### OOD v3 Fresh Post-Development Holdout
+- 1,500 benign augmentation examples;
+- 1,500 targeted malicious augmentation examples;
+- 1,000 short-benign augmentation examples.
 
-OOD v3 is a fresh 400-message external holdout constructed after Model D development. It contains 200 ham and 200 spam messages from UCI SMS data, excluding messages reused during Model D benign augmentation. The dataset was frozen before evaluation and was not used for further model tuning.
+Its epoch-3 validation results were:
 
-| Model               |   Accuracy |   Precision | Recall |         F1 |    ROC-AUC | False Positive | False Negative |
-| ------------------- | ---------: | ----------: | -----: | ---------: | ---------: | -------------: | -------------: |
-| Original DistilBERT |     68.75% |      63.16% | 90.00% |     74.23% |     86.66% |        105/200 |         20/200 |
-| **Model D**         | **87.00%** | **100.00%** | 74.00% | **85.06%** | **98.05%** |      **0/200** |         52/200 |
+- Accuracy **99.23%**
+- Precision **99.07%**
+- Recall **97.85%**
+- F1 **98.45%**
+- ROC-AUC **99.96%**
 
-Model D changed 139 of 400 predictions relative to the original checkpoint. On this fresh holdout, it eliminated benign false positives but traded away malicious recall. OOD v3 is an external SMS-spam generalization test rather than a direct modern-phishing benchmark. OOD v2 is retained as a development-set diagnostic result.
+It was selected because it substantially improved the development/OOD profile, particularly benign false-positive control, while retaining strong original held-out performance.
 
-Additional OOD v3 analysis: PR-AUC = 98.65%, Brier score = 0.12385, and ECE = 0.12860. These results indicate strong ranking performance but poorly calibrated probabilities under this distribution. Calibration was not fit on OOD v3 because it remains the post-development external holdout.
+## Confusion Matrices
 
-The 52 false negatives are dominated by SMS-spam categories outside the project's core phishing/security threat model. Two security-adjacent cases were individually inspected: one was too sparse to establish malicious intent, while another contained login and URL-related cues but received only 15.2% malicious probability. These cases are qualitative failure analysis, not a phishing-recall estimate.
+### Original held-out text test — Model D
 
-### Cross-Source Text Evaluation
+```text
+[[968, 5],
+ [14, 312]]
+```
 
-| Train Source | Evaluation Source | Model      | Accuracy |     F1 | ROC-AUC |
-| ------------ | ----------------- | ---------- | -------: | -----: | ------: |
-| Ling         | SpamAssassin      | DistilBERT |   43.56% | 49.95% |  85.70% |
-| SpamAssassin | Ling              | DistilBERT |   91.84% | 79.29% |  99.33% |
+### OOD v2 — Model D
 
-The cross-source results show that strong in-domain performance does not guarantee generalization across corpora.
+```text
+[[120, 0],
+ [14, 106]]
+```
 
-### External Phishing Evaluation
+### OOD v3 — Model D
 
-Nazario is used as an external phishing-positive-only evaluation set.
+```text
+[[200, 0],
+ [52, 148]]
+```
 
-| Model                        | Phishing Recall |
-| ---------------------------- | --------------: |
-| TF-IDF + Logistic Regression |          80.89% |
-| DistilBERT                   |      **83.83%** |
+OOD v3 therefore contains **200/200 correctly classified benign messages**, **148/200 correctly classified spam messages**, **0 false positives**, and **52 false negatives**.
 
-Because the external set is positive-only, ROC-AUC is not reported for this evaluation.
+## OOD v2 — Development Challenge
 
-## URL Benchmark
+OOD v2 contains **240 messages**: 120 benign and 120 malicious, with balanced domain/register coverage.
 
-Two complementary URL resources are used.
+| Model | Accuracy | Precision | Recall | F1 | ROC-AUC |
+|---|---:|---:|---:|---:|---:|
+| Original DistilBERT | 62.08% | 57.14% | 96.67% | 71.83% | 90.02% |
+| + benign augmentation | 68.75% | 97.87% | 38.33% | 55.09% | 88.54% |
+| 50/50 score fusion | 80.42% | 93.98% | 65.00% | 76.85% | 90.43% |
+| + targeted malicious | 82.92% | 76.87% | 94.17% | 84.64% | 94.48% |
+| **Model D** | **94.17%** | **100.00%** | **88.33%** | **93.81%** | **99.65%** |
 
-Two complementary URL datasets are evaluated under domain-aware splitting. PhiUSIIL is the primary controlled benchmark, while the separate Faizann24 malicious-URL corpus is retained as a harder generalization reference.
+**Important:** OOD v2 was used to diagnose failure modes and guide augmentation, so it is treated as a **development challenge set**, not an unbiased final generalization estimate.
 
-### Domain-Aware URL Benchmark Results
 
-| Metric / Dataset | PhiUSIIL | Faizann24 malicious URLs |
-| --- | ---: | ---: |
-| Role | Primary controlled benchmark | Secondary harder/generalization reference |
-| Full dataset | 235,795 | 420,464 raw / 406,954 clean |
-| Test size | 23,677 | 41,904 |
-| Accuracy | 99.63% | 78.42% |
-| Precision | 99.95% | 35.36% |
-| Recall | 99.20% | 62.64% |
-| F1 | **99.58%** | **45.20%** |
-| ROC-AUC | 99.86% | 83.74% |
+### Register Hypothesis: Casual vs Formal Language
 
-The datasets are independently constructed and use separate domain-aware split branches. The performance gap is therefore a cross-dataset result, not an inconsistency in the evaluation pipeline. These are dataset-specific benchmark results and should not be interpreted as production-level phishing detection performance.
+During OOD v2 analysis, an initial observation suggested that message register (casual vs formal) might explain part of the model's behavior. This was treated as a hypothesis rather than an assumption and was tested with a paired design.
 
-### Live URL Deployment Verification
+An initial unpaired comparison appeared highly significant (**p = 1.25 × 10⁻⁵**). Because corresponding content was structured in a paired way, a paired Wilcoxon analysis was then used.
 
-A separate balanced 100-URL sample (50 good, 50 bad; random_state=42) was passed through the same feature extraction, scaler, and logistic-regression artifacts used by the deployed URL scorer.
+- Benign messages: **p = 0.130**
+- Malicious messages: **p = 0.813**
 
-| Metric          | Live 100-URL Result |
-| --------------- | ------------------: |
-| Accuracy        |              72.00% |
-| Precision       |              76.19% |
-| Recall          |              64.00% |
-| F1              |              69.57% |
-| False positives |          10/50 good |
-| False negatives |           18/50 bad |
+These paired results did **not** provide sufficient evidence that casual-vs-formal register was a principal driver of the observed differences. The register hypothesis was therefore not used as a basis for further model tuning.
 
-The live scorer and offline raw-URL scorer produced numerically identical probabilities on all 100 URLs (maximum absolute difference approximately 1.11e-16). This verifies that the deployed URL inference path matches the offline implementation. Because this is a small balanced deployment check, it is reported separately from the full 41,904-row domain-aware benchmark.
+A separate **domain effect (personal vs business content, independent of register)** was observed descriptively in OOD v2 but was **not subjected to the same formal paired statistical test** in this project. It is therefore left as a future research question rather than reported as a statistically established effect.
 
-## Why the Evaluation Goes Beyond Accuracy
+## OOD v3 — Fresh Post-Development Holdout
 
-A high held-out score can hide dataset-specific shortcuts. This project therefore evaluates:
+OOD v3 was constructed **after Model D development** from an unused portion of the UCI SMS pool after removing overlap with the augmentation data.
 
-- in-domain held-out performance
-- cross-source generalization
-- external phishing data
-- domain-aware URL splits
-- error distributions
-- auxiliary manipulation indicators
-- robustness to controlled linguistic transformations
+- 400 total messages.
+- 200 ham / 200 spam.
+- Random seed: **2026**.
+- Dataset SHA-256: `5ab2bcf9b6acc6c73d507ecc56d76f9dfd3e0d2f2e972fc97d486660319f81c8`.
+- Prediction file SHA-256: `bb299f93e70f6f9e7f12d201a63e7e1670af60da498362638af4ab80742a54a6`.
 
-The goal is to measure not only whether the model performs well, but also where that performance stops generalizing.
+| Model | Accuracy | Precision | Recall | F1 | ROC-AUC | FP | FN |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Original DistilBERT | 68.75% | 63.16% | 90.00% | 74.23% | 86.66% | 105 | 20 |
+| **Model D** | **87.00%** | **100.00%** | 74.00% | **85.06%** | **98.05%** | **0** | **52** |
+
+OOD v3 is the project's **primary post-development generalization estimate**, but it is specifically an **external SMS-spam generalization test**, not a modern phishing benchmark.
+
+### OOD v3 Calibration
+
+- PR-AUC: **98.65%**
+- Brier score: **0.12385**
+- ECE: **0.12860**
+
+The raw model scores are therefore **not guaranteed to be calibrated probabilities**. A UI score such as `99.9%` should be interpreted as a model risk/confidence score, not as a literal 99.9% real-world probability.
+
+## Cross-Source Text Evaluation
+
+| Train source → Test source | Accuracy | F1 | ROC-AUC |
+|---|---:|---:|---:|
+| Ling → SpamAssassin | 43.56% | 49.95% | 85.70% |
+| SpamAssassin → Ling | 91.84% | 79.29% | 99.33% |
+
+These results demonstrate that strong in-domain performance does not imply symmetric cross-corpus generalization.
+
+## External Phishing Evaluation
+
+Nazario is reserved as a phishing-positive-only external evaluation set.
+
+| Model | Phishing recall |
+|---|---:|
+| TF-IDF + Logistic Regression | 80.89% |
+| **DistilBERT** | **83.83%** |
+
+Because the set is positive-only, ROC-AUC is not reported.
 
 ## Robustness Study
 
-The project includes a controlled robustness experiment to test whether phishing detection remains effective after malicious messages are rewritten while preserving their underlying intent.
+The robustness experiment tests whether malicious messages remain detectable after controlled linguistic rewrites that preserve the underlying intent.
 
-A fixed sample of 100 malicious messages is transformed in three ways:
+### Transformation families
 
-1. Professional rewrite: improve grammar, readability, structure, and naturalness while preserving suspicious intent.
-2. Cue-reduced rewrite: reduce obvious scam-style linguistic cues such as exaggerated urgency, awkward phrasing, excessive punctuation, or overt threats while preserving the underlying objective and requested action.
-3. Combined rewrite: apply both transformations.
+1. Professional rewrite — improve grammar, structure, and naturalness.
+2. Cue-reduced rewrite — reduce obvious scam-style cues while preserving objective and requested action.
+3. Combined rewrite — apply both transformations.
 
-This produces 300 transformation attempts. Of these, 281 passed generation validation, 226 passed cosine-similarity screening, and 60 candidates were selected for manual semantic audit. One audited case was not assessable because the underlying message was materially corrupted, leaving 59 semantically verified transformation instances from 42 unique base messages.
-
-### Robustness Pipeline
+### Screening pipeline
 
 ```text
 Original malicious message
-          |
-          v
+          ↓
 Controlled LLM transformation
-          |
-          v
-Placeholder integrity validation
-          |
-          v
-Semantic similarity screening
-          |
-          v
-Structured semantic preservation audit
-          |
-          v
+          ↓
+Placeholder validation
+          ↓
+Cosine similarity screening
+          ↓
+Manual semantic audit
+          ↓
 Model evaluation
-          |
-          v
-Before/after comparison
+          ↓
+Before / after comparison
 ```
 
-Cosine similarity is used only as a screening signal, not as proof of semantic equivalence. The predefined screening threshold is 0.85.
+Cosine similarity is a screening signal rather than proof of semantic equivalence. The predefined screening threshold is **0.85**.
 
-Transformations that fail the automatic screening are not rescued by lowering the threshold.
+### Final audit
 
-### Robustness Results
+- 100 malicious base messages sampled.
+- 300 transformation attempts.
+- 281 passed generation validation.
+- 226 passed similarity screening.
+- 60 candidates manually audited.
+- 59 semantically verified transformation instances.
+- 1 not assessed.
 
-The primary robustness analysis is performed at the base-message level because multiple verified transformations can originate from the same underlying message. Across 42 unique base messages, 4 experienced at least one malicious-to-benign threshold crossing at the predefined 0.50 threshold: 4/42 = 9.52% (95% bootstrap CI: 2.38%–19.05%).
+### Primary analysis — base-message level
 
-For score shift, each base message is represented by the mean score across its available verified transformations. The original mean malicious probability was 0.9833 versus 0.9295 after rewriting, for a mean paired change of -0.05381 (95% bootstrap CI: -0.12047 to -0.00185). A one-sided Wilcoxon signed-rank test gave W = 766 and p = 1.68×10^-5.
+Because multiple rewrites originate from the same source message, the **42 unique base messages** are the primary statistical unit.
 
-The 59 verified transformation instances remain useful as a secondary descriptive analysis:
+- 4/42 base messages had ≥1 malicious→benign threshold flip.
+- **Flip rate: 9.52%**
+- Bootstrap 95% CI: **2.38%–19.05%**
+- Original mean score: **0.98328**
+- Transformed mean score: **0.92947**
+- Mean delta: **−0.05381**
+- Median delta: **−0.000098**
+- One-sided Wilcoxon: **W = 766, p = 1.68×10⁻⁵**
+- Bootstrap 95% CI for mean delta: **[−0.12047, −0.00185]**
 
-| Transformation |   n | Mean Δ score | Mean absolute Δ | Wilcoxon p |
-| -------------- | --: | -----------: | --------------: | ---------: |
-| Professional   |  20 |      -0.0656 |          0.1076 |     0.0136 |
-| Cue-reduced    |  20 |      -0.0592 |          0.0729 |     0.0136 |
-| Combined       |  19 |      -0.1579 |          0.1769 |     0.0053 |
-| Overall        |  59 |      -0.0932 |          0.1182 |   0.000021 |
+### Secondary transformation-level analysis
 
-All 8 transformation-level threshold-crossing changes were malicious → benign and came from 4 underlying base messages. The 59-instance analysis is therefore secondary and descriptive rather than an independent-message significance test. At higher thresholds, positive detections lost after rewriting were 6 at 0.75, 6 at 0.90, and 4 at 0.99, compared with 8 at the 0.50 threshold.
+| Transformation | n | Mean Δ | Mean |Δ| | Wilcoxon p |
+|---|---:|---:|---:|---:|
+| Professional | 20 | -0.0656 | 0.1076 | 0.0136 |
+| Cue-reduced | 20 | -0.0592 | 0.0729 | 0.0136 |
+| Combined | 19 | -0.1579 | 0.1769 | 0.0053 |
+| Overall | 59 | -0.0932 | 0.1182 | 0.000021 |
 
-These results indicate sensitivity to semantically preserved linguistic rewriting. This is a controlled robustness challenge-set evaluation, not a real-world prevalence estimate.
+All 8 transformation-instance threshold flips were malicious→benign and came from 4 underlying base messages.
 
-## Auxiliary Risk Indicators
+**Interpretation:** the classifier is measurably sensitive to semantically preserved linguistic rewriting. This is a controlled robustness challenge-set result, not a prevalence estimate.
 
-The system also extracts transparent rule-based auxiliary context signals from messages, currently including:
+## URL Intelligence
 
-- urgency or deadline language
-- financial or payment requests
-- authority or impersonation cues
+### Primary PhiUSIIL branch
 
-These signals provide supporting context for the final explanation. They are not treated as a replacement for the primary text classifier or as model explainability.
+- Raw rows: **235,795**
+- Test rows: **23,677**
 
-## Error Analysis
+| Metric | Result |
+|---|---:|
+| Accuracy | **99.63%** |
+| Precision | **99.95%** |
+| Recall | **99.20%** |
+| F1 | **99.58%** |
+| ROC-AUC | **99.86%** |
 
-Evaluation includes explicit analysis of false positives and false negatives rather than relying only on aggregate metrics.
+### Separate Faizann24-derived branch
 
-The analysis examines:
+Provenance recorded in the project as:
 
-- source-specific failures
-- difficult phishing examples
-- benign promotional or newsletter messages
-- URL-related errors
-- messages with manipulation indicators
-- cross-source generalization failures
+`faizann24/Using-machine-learning-to-detect-malicious-URLs`
 
-## Datasets
+Cleaning audit:
 
-### Text
+- Raw rows: **420,464**
+- Exact duplicate rows: **9,216**
+- Duplicate URLs: **9,217**
+- Normalized unique URLs: **406,955**
+- Normalized duplicates: **13,509**
+- One conflicting URL removed
+- Final clean rows: **406,954**
+- Good: **344,799**
+- Bad: **62,155**
+- Bad proportion: **15.27%**
+- Test rows: **41,904**
 
-The text corpus combines multiple email datasets used for supervised training and evaluation, including Ling and SpamAssassin, with Nazario reserved for external phishing-positive evaluation.
+| Metric | Result |
+|---|---:|
+| Accuracy | **78.42%** |
+| Precision | **35.36%** |
+| Recall | **62.64%** |
+| F1 | **45.20%** |
+| ROC-AUC | **83.74%** |
 
-Dataset preparation includes missing-value checks, exact and normalized duplicate analysis, cross-source overlap analysis, and source-aware splitting.
+The two URL branches are deliberately reported separately because they represent different datasets and evaluation conditions.
 
-### URL
+### Live URL deployment verification
 
-Two URL resources are used for complementary purposes:
+Balanced sanity sample:
 
-- Malicious URL dataset: secondary reference for studying generalization conditions and domain leakage.
-- PhiUSIIL: primary URL benchmark used with domain-aware splits and a controlled URL-only feature subset.
+- 100 URLs.
+- 50 good / 50 bad.
+- random seed **42**.
 
-Raw and processed datasets are intentionally excluded from this repository. The data preparation and splitting scripts remain available for reproducibility.
+Results:
+
+- Accuracy **72.00%**
+- Precision **76.19%**
+- Recall **64.00%**
+- F1 **69.57%**
+- False positives **10/50 good**
+- False negatives **18/50 bad**
+
+The live and offline scorers produced a maximum absolute probability difference of approximately **1.11×10⁻¹⁶**, verifying numerical consistency of the deployment path.
+
+## Error Analysis and Known Failure Modes
+
+### Short, context-poor scam messages
+
+Final UI smoke testing revealed a specific limitation after short-benign augmentation. Several short scam messages were under-scored:
+
+- `WINNER! Claim your free prize now. Reply YES to receive your reward.` → **1.6%**
+- `Congratulations! You have won a prize. Claim it now.` → **0.0%**
+- `You won $500! Reply YES to claim your prize.` → **3.2%**
+- `URGENT: You have won a cash prize. Claim now.` → **0.0%**
+- `Your account is locked. Verify now.` → **0.0%**
+- `I love you. Send me money for my emergency.` → **0.0%**
+
+In contrast, longer romance and prize/financial examples were scored at **100.0% high risk** during final application testing.
+
+This suggests a meaningful **short-context blind spot** rather than a universal failure of the classifier.
+
+### Other limitations
+
+- Dataset-specific language and source distributions can create corpus shortcuts.
+- Cross-source performance can be highly asymmetric.
+- OOD v3 shows **98.05% ROC-AUC but only 74.00% recall**, illustrating a ranking/classification trade-off.
+- Raw risk scores are not universally calibrated.
+- OOD v3 false negatives should not all be interpreted as missed phishing attacks because it is an SMS-spam holdout and includes out-of-scope content.
+- Robustness transformations are controlled rewrites, not real attacker adaptations.
+- Auxiliary signals are heuristics, not faithful neural-model explanations.
+- URL analysis is lexical/feature-based and does not perform live reputation lookup, DNS resolution, or browser execution.
+
+## Scam Taxonomy: Deliberately Not Used for Headline Claims
+
+The repository contains a **60-row synthetic intent→category prototype** spanning ten categories, including family/friend impersonation, payment/invoice fraud, phishing/account takeover, romance scam, prize/refund/charity scams, and investment/crypto scam.
+
+It achieved very high experimental classification scores, but it is too small and synthetic to support credible real-world category probabilities. Therefore:
+
+> **SENTINEL does not currently claim real-world “Romance 87% / Financial 92% / Prize 14%” style category probabilities.**
+
+A future multi-class taxonomy should be built only after obtaining sufficiently diverse, appropriately licensed, independently labeled scam-category data.
+
+## Why This Evaluation Goes Beyond Accuracy
+
+A high held-out score can hide dataset-specific shortcuts. SENTINEL therefore evaluates:
+
+- in-domain held-out performance;
+- cross-source generalization;
+- external phishing-positive evaluation;
+- development OOD challenge data;
+- fresh post-development OOD data;
+- domain-aware URL splits;
+- calibration;
+- error distributions;
+- controlled linguistic robustness;
+- deployment-path consistency.
+
+The goal is not only to maximize a benchmark score, but to identify where that performance stops generalizing.
+
+## Ethics, Safety, and Data Handling
+
+SENTINEL is designed for defensive research and demonstration. Raw datasets and row-level generated robustness examples are kept outside version control where appropriate; the public repository does not intentionally expose raw message corpora or secrets.
+
+The application does not browse submitted URLs, execute webpages, perform DNS resolution, or rely on live reputation feeds. URL analysis is performed using the project's stored feature extraction and classification pipeline.
+
+The system should not be used as the sole basis for consequential decisions. Its risk score is a model confidence/risk signal, not a guaranteed probability that a message or URL is malicious.
+
+---
+
+## Reproducibility
+
+The current Python environment is pinned in `requirements.txt`:
+
+```text
+accelerate==1.14.0
+datasets==5.0.1
+joblib==1.6.0
+numpy==2.4.6
+openai==3.7.0
+pandas==3.0.5
+python-dotenv==1.2.3
+scikit-learn==1.9.0
+scipy==1.17.1
+sentence-transformers==6.0.1
+torch==2.14.0
+transformers==5.16.1
+matplotlib==3.10.8
+```
+
+Environment check:
+
+```text
+python -m pip check
+No broken requirements found.
+```
+
+The OOD v3 evaluation scripts were rerun and reproduced the reported Model D metrics.
+
+Large datasets, model weights, local environments, secrets, and row-level experimental outputs are excluded from version control.
+
+## Quick Start
+
+### Backend
+
+From the repository root:
+
+```bash
+python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000
+```
+
+Health check:
+
+```bash
+curl http://127.0.0.1:8000/health
+```
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Open:
+
+`http://localhost:3000`
+
+### Production build
+
+```bash
+cd frontend
+npm run build
+```
+
+## API
+
+### `POST /analyze`
+
+Request:
+
+```json
+{
+  "message": "URGENT: Verify your bank account immediately."
+}
+```
+
+The response includes:
+
+- `risk_score`
+- `risk_level`
+- `model`
+- `device`
+- `signals`
+- `combinations`
+- `url_count`
+- `url_max_probability`
+- `url_mean_probability`
+- `url_risk_level`
 
 ## Repository Structure
 
@@ -276,46 +539,81 @@ Raw and processed datasets are intentionally excluded from this repository. The 
 ai-scam-phishing-intelligence/
 ├── README.md
 ├── requirements.txt
-├── .gitignore
-│
+├── backend/
+│   └── app/
+│       ├── main.py
+│       └── services/
+│           ├── text_model.py
+│           └── url_model.py
+├── frontend/
+│   ├── app/
+│   ├── components/
+│   └── lib/
 ├── src/
-│   ├── data/           # dataset preparation and splitting
-│   ├── features/       # URL and manipulation features
-│   ├── models/         # model training scripts
-│   └── evaluation/     # evaluation, error analysis, robustness
-│
-└── results/
-    ├── dataset_investigation/
-    ├── phiusiil/
-    └── experiment_log.md
+│   ├── data/
+│   ├── features/
+│   ├── models/
+│   └── evaluation/
+├── results/
+│   ├── dataset_investigation/
+│   ├── phiusiil/
+│   └── experiment_log.md
+├── compare_ood_v3.py
+└── evaluate_ood_v3.py
 ```
 
-Large datasets, transformer weights, local virtual environments, secrets, and row-level experimental outputs are excluded from version control.
+## Finalization Status
 
-## Reproducibility
+- ✅ Final text model selected.
+- ✅ Held-out text evaluation.
+- ✅ Cross-source evaluation.
+- ✅ External phishing-positive evaluation.
+- ✅ OOD v2 development challenge.
+- ✅ OOD v3 fresh post-development holdout.
+- ✅ Base-message-level robustness analysis.
+- ✅ URL benchmark evaluation.
+- ✅ Live URL deployment verification.
+- ✅ FastAPI backend integration.
+- ✅ Next.js frontend.
+- ✅ Local backend smoke tests.
+- ✅ Frontend production build.
+- ✅ Reproducible Python dependency environment.
+- ✅ Technical report.
+- ✅ Register-hypothesis analysis documented.
+- ✅ Ethics/data-handling scope documented.
+- ✅ References and external benchmark context documented.
 
-The project uses fixed random seeds where applicable and records major experimental decisions in `results/experiment_log.md`.
+## Future Work
 
-The evaluation emphasizes held-out performance, source-shift generalization, external evaluation, domain-aware URL splitting, error analysis, and robustness to controlled linguistic transformations.
+Future improvements should be evaluated as new experimental versions rather than silently changing the frozen Model D results.
 
-## Limitations
+Potential directions:
 
-Current limitations include dataset-specific language and URL distributions, possible corpus shortcuts, the use of controlled synthetic rewrites in the robustness study, and the absence of live threat-intelligence feeds or browser-side execution.
+- improve short-context scam detection without increasing benign false positives;
+- obtain better-labeled multi-class scam data for category analysis;
+- add calibrated risk scoring using a held-out calibration set;
+- add richer URL intelligence without unsafe live execution;
+- evaluate additional modern phishing corpora;
+- deploy a public demonstration.
 
-The system is intended as a defensive research and demonstration project, not as a guarantee that a message or URL is safe.
+## References
 
-## Remaining Finalization
+1. Sanh, V., Debut, L., Chaumond, J., & Wolf, T. (2019). *DistilBERT, a distilled version of BERT: smaller, faster, cheaper and lighter*. arXiv:1910.01108. https://arxiv.org/abs/1910.01108
+2. Prasad, A., & Chandra, S. (2023/2024). *PhiUSIIL: A diverse security profile empowered phishing URL detection framework based on similarity index and incremental learning*. Computers & Security, 136, 103545. https://doi.org/10.1016/j.cose.2023.103545
+3. Almeida, T. A., Hidalgo, J. M. G., & Yamakami, A. (2011). *Contributions to the Study of SMS Spam Filtering: New Collection and Results*. ACM DOCENG. UCI SMS Spam Collection: https://doi.org/10.24432/C5CC84
+4. Emmanuel, U. U., & Oghie, G. F. (2026). *A Lightweight Hybrid MLP-Based Framework for Real-Time Phishing URL Detection Using Structural URL Features*. arXiv:2606.00889. https://arxiv.org/abs/2606.00889
+5. Nazario phishing corpus, Ling/SpamAssassin corpora, and the URL dataset sources are documented in the project data-preparation and experiment records. Their original source terms remain applicable.
+6. The Faizann24-derived URL branch is recorded in the project as `faizann24/Using-machine-learning-to-detect-malicious-URLs`.
 
-- Finalize benchmark tables and plots
-- Add architecture and methodology diagrams
-- Write the full technical report
-- Add tests and reproducibility instructions
-- Complete the final reproducibility smoke test
-- Perform final GitHub/documentation cleanup
+The PhiUSIIL paper reports a 235,795-URL dataset and benchmark accuracies of 99.24% under fully incremental learning and 99.79% under its pre-training approach, providing external context for the high benchmark performance observed on this dataset. citeturn657751search0 The 2026 Emmanuel & Oghie preprint independently reports 99.24% accuracy using a lightweight structural-URL approach on the same 235,795-example PhiUSIIL dataset, providing additional corroborating context. citeturn838344search4
+
+---
 
 ## License
 
-License to be selected before final publication.
+Project code license: **to be selected before public publication**.
+
+Dataset and pretrained-model terms remain governed by their respective sources and licenses.
 
 ## Author
 
